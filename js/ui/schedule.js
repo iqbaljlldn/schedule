@@ -52,7 +52,7 @@ export function renderSchedule(container) {
     <div class="schedule-view-container">
       <div class="schedule-toolbar">
         <div class="toolbar-left">
-          <h2 class="section-title">📅 Jadwal Lengkap Public Speaking</h2>
+          <h2 class="section-title">📅 Jadwal Lengkap Motivational Show</h2>
           <p class="section-desc">Urutan antrean bicara kelas. Pindahkan atau tukar giliran tanpa merusak riwayat.</p>
         </div>
         <div class="toolbar-actions">

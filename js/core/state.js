@@ -81,7 +81,7 @@ export function createDemoState() {
   return {
     version: 2,
     class: {
-      name: 'Public Speaking Class',
+      name: 'Motivational Show Class',
       startDate: '2026-10-01',
       classDays: [1, 2, 3, 4, 5], // Monday - Friday
       timezone: 'Asia/Jakarta'

@@ -49,7 +49,7 @@ function renderApp() {
   // Update header class title
   const classTitleEl = document.getElementById('header-class-name');
   if (classTitleEl) {
-    classTitleEl.textContent = state?.class?.name || 'Public Speaking Tracker';
+    classTitleEl.textContent = state?.class?.name || 'Motivational Show Tracker';
   }
 
   // Update stats counters
@@ -223,7 +223,7 @@ function openSetupWizardModal() {
   modal.innerHTML = `
     <div class="modal-card modal-lg animate-pop">
       <div class="modal-header">
-        <h2 id="setup-title" class="modal-title">🎓 Selamat Datang di Public Speaking Tracker!</h2>
+        <h2 id="setup-title" class="modal-title">🎓 Selamat Datang di Motivational Show Tracker!</h2>
       </div>
       <form id="setup-wizard-form" class="modal-body">
         <p class="modal-desc">

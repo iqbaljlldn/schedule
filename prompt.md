@@ -1,8 +1,8 @@
-# Build a Public Speaking Daily Schedule Tracker
+# Build a Motivational Show Daily Schedule Tracker
 
 ## 1. Project Overview
 
-Build a small, clean, responsive web application for tracking the daily **Public Speaking session schedule** for a class.
+Build a small, clean, responsive web application for tracking the daily **Motivational Show session schedule** for a class.
 
 Every day, exactly one student is scheduled to come to the front of the class and do a public speaking session.
 
@@ -161,7 +161,7 @@ Suggested structure:
 
 ```text
 ┌──────────────────────────────────────────────┐
-│ Public Speaking Schedule                     │
+│ Motivational Show Schedule                     │
 │ Class Schedule                               │
 ├──────────────────────────────────────────────┤
 │                                              │
@@ -171,7 +171,7 @@ Suggested structure:
 │             🎤                               │
 │          JOHN DOE                            │
 │                                              │
-│       Public Speaking #12                    │
+│       Motivational Show #12                    │
 │                                              │
 │      [ Mark Completed ]                      │
 │                                              │
@@ -219,7 +219,7 @@ TODAY
 
 John Doe
 
-Public Speaking #12
+Motivational Show #12
 
 Scheduled
 ```
