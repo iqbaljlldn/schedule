@@ -35,6 +35,25 @@ export const useAuth = () => {
     }
   }
 
+  const register = async (name: string, email: string, password: string) => {
+    loading.value = true
+    try {
+      const res = await $fetch('/api/auth/register', {
+        method: 'POST',
+        body: { name, email, password }
+      })
+      user.value = (res as any).user
+      return { success: true }
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err.data?.message || err.message || 'Pendaftaran gagal'
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
   const logout = async () => {
     try {
       await $fetch('/api/auth/logout', { method: 'POST' })
@@ -50,6 +69,7 @@ export const useAuth = () => {
     loading,
     fetchUser,
     login,
+    register,
     logout
   }
 }

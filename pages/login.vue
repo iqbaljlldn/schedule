@@ -19,16 +19,35 @@
           <Sparkles class="w-7 h-7" />
         </div>
         <h2 class="text-3xl font-extrabold font-display tracking-tight text-slate-900 dark:text-white">
-          Portal Guru
+          Portal Guru & Pengajar
         </h2>
         <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">
-          Masuk untuk mengelola jadwal, penilaian langsung, dan kelas
+          {{ mode === 'login' ? 'Masuk untuk mengelola kelas dan jadwal Anda' : 'Daftarkan akun pengajar baru secara gratis' }}
         </p>
       </div>
 
-      <div class="mt-8 bg-white dark:bg-slate-900/90 py-8 px-6 shadow-xl shadow-slate-200/50 dark:shadow-none sm:rounded-2xl sm:px-10 border border-slate-200/80 dark:border-slate-800 backdrop-blur-xl relative">
-        <!-- Demo Banner / Quick Fill -->
-        <div class="mb-6 p-3.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 flex items-center justify-between text-xs">
+      <div class="mt-8 bg-white dark:bg-slate-900/90 py-8 px-6 shadow-xl shadow-slate-200/50 dark:shadow-none sm:rounded-3xl sm:px-10 border border-slate-200/80 dark:border-slate-800 backdrop-blur-xl relative">
+        
+        <!-- Mode Tabs: Masuk vs Daftar -->
+        <div class="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl mb-6 text-xs font-bold">
+          <button
+            type="button"
+            @click="switchMode('login')"
+            :class="['flex-1 py-2.5 rounded-xl transition-all text-center', mode === 'login' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900']"
+          >
+            Masuk Akun
+          </button>
+          <button
+            type="button"
+            @click="switchMode('register')"
+            :class="['flex-1 py-2.5 rounded-xl transition-all text-center', mode === 'register' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900']"
+          >
+            Daftar Guru Baru
+          </button>
+        </div>
+
+        <!-- Demo Banner (Only on login mode) -->
+        <div v-if="mode === 'login'" class="mb-6 p-3.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 flex items-center justify-between text-xs">
           <div>
             <span class="font-bold text-indigo-700 dark:text-indigo-300 block">Akun Pengajar Demo:</span>
             <span class="text-slate-600 dark:text-slate-400 font-mono text-[11px]">guru@sekolah.id</span>
@@ -48,7 +67,27 @@
           <span>{{ errorMessage }}</span>
         </div>
 
-        <form @submit.prevent="handleLogin" class="space-y-5">
+        <!-- Form -->
+        <form @submit.prevent="handleSubmit" class="space-y-4">
+          <!-- Name (only for register) -->
+          <div v-if="mode === 'register'">
+            <label for="name" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+              Nama Lengkap & Gelar
+            </label>
+            <div class="relative">
+              <User class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                id="name"
+                v-model="name"
+                type="text"
+                required
+                placeholder="Contoh: Ustadz Ahmad, M.Pd"
+                class="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+              />
+            </div>
+          </div>
+
+          <!-- Email -->
           <div>
             <label for="email" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
               Alamat Email
@@ -62,11 +101,12 @@
                 required
                 autocomplete="email"
                 placeholder="nama@sekolah.id"
-                class="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                class="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
               />
             </div>
           </div>
 
+          <!-- Password -->
           <div>
             <label for="password" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
               Kata Sandi
@@ -79,8 +119,8 @@
                 type="password"
                 required
                 autocomplete="current-password"
-                placeholder="••••••••"
-                class="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                placeholder="•••••••• (minimal 6 karakter)"
+                class="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
               />
             </div>
           </div>
@@ -92,13 +132,13 @@
               class="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-lg shadow-indigo-600/20 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Loader2 v-if="loading" class="w-4 h-4 animate-spin" />
-              <span>{{ loading ? 'Memverifikasi...' : 'Masuk ke Dashboard' }}</span>
+              <span>{{ loading ? 'Memproses...' : mode === 'login' ? 'Masuk ke Dashboard' : 'Daftar & Masuk' }}</span>
             </button>
           </div>
         </form>
 
         <div class="mt-6 text-center text-xs text-slate-400 dark:text-slate-500">
-          Siswa tidak perlu login. Cukup buka tautan kelas yang dibagikan guru.
+          Siswa tidak perlu membuat akun. Cukup buka tautan kelas yang dibagikan oleh guru masing-masing.
         </div>
       </div>
     </div>
@@ -106,12 +146,19 @@
 </template>
 
 <script setup lang="ts">
-import { ArrowLeft, Sparkles, AlertCircle, Mail, Lock, Loader2 } from 'lucide-vue-next'
+import { ArrowLeft, Sparkles, AlertCircle, Mail, Lock, User, Loader2 } from 'lucide-vue-next'
 
+const mode = ref<'login' | 'register'>('login')
+const name = ref('')
 const email = ref('')
 const password = ref('')
 const errorMessage = ref('')
-const { login, loading } = useAuth()
+const { login, register, loading } = useAuth()
+
+const switchMode = (newMode: 'login' | 'register') => {
+  mode.value = newMode
+  errorMessage.value = ''
+}
 
 const fillDemo = () => {
   email.value = 'guru@sekolah.id'
@@ -119,13 +166,26 @@ const fillDemo = () => {
   errorMessage.value = ''
 }
 
-const handleLogin = async () => {
+const handleSubmit = async () => {
   errorMessage.value = ''
-  const res = await login(email.value, password.value)
-  if (res.success) {
-    navigateTo('/dashboard')
+  if (mode.value === 'login') {
+    const res = await login(email.value, password.value)
+    if (res.success) {
+      navigateTo('/dashboard')
+    } else {
+      errorMessage.value = res.error || 'Email atau kata sandi tidak valid'
+    }
   } else {
-    errorMessage.value = res.error || 'Email atau kata sandi tidak valid'
+    if (!name.value.trim()) {
+      errorMessage.value = 'Nama lengkap wajib diisi'
+      return
+    }
+    const res = await register(name.value.trim(), email.value, password.value)
+    if (res.success) {
+      navigateTo('/dashboard')
+    } else {
+      errorMessage.value = res.error || 'Pendaftaran gagal'
+    }
   }
 }
 </script>

@@ -137,6 +137,15 @@
             >
               <Tv class="w-4 h-4" />
             </NuxtLink>
+
+            <button
+              type="button"
+              @click="deleteClass(cls)"
+              class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-rose-600 hover:border-rose-300 dark:hover:border-rose-900 transition-colors"
+              title="Hapus Kelas"
+            >
+              <Trash2 class="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
@@ -273,7 +282,7 @@
 <script setup lang="ts">
 import {
   LayoutDashboard, LogOut, Plus, Copy, ArrowRight,
-  Tv, GraduationCap, Loader2
+  Tv, GraduationCap, Loader2, Trash2
 } from 'lucide-vue-next'
 
 const { user, fetchUser, logout } = useAuth()
@@ -289,6 +298,17 @@ onMounted(async () => {
 // Fetch Classes
 const { data, pending, refresh } = await useFetch<any>('/api/classes')
 const classesList = computed(() => data.value?.classes || [])
+
+// Delete Class
+const deleteClass = async (cls: any) => {
+  if (!confirm(`Hapus kelas "${cls.name}" beserta seluruh jadwal dan muridnya? Tindakan ini tidak dapat dibatalkan.`)) return
+  try {
+    await $fetch(`/api/classes/${cls.id}`, { method: 'DELETE' })
+    await refresh()
+  } catch (err: any) {
+    alert(err.data?.message || err.message || 'Gagal menghapus kelas')
+  }
+}
 
 // Copy Link Helper
 const copiedSlug = ref('')
