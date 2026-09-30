@@ -1,10 +1,31 @@
 /**
- * Initial state definitions and Demo Data generation.
+ * Initial state definitions and Real Classroom Data.
  */
+
+export const REAL_STUDENT_NAMES = [
+  'AHMAD YAZID',
+  'MUHAMMAD DEDY',
+  'MUHAMMAD ZAKY KAMILURRIZAL',
+  'HANIF ABDURRAHMAN ARRIFAI',
+  'MUHAMAD FARIZ ASH SYUHADA',
+  'AHMAD MAULANA',
+  'REYNALDI ABDITIO',
+  'MUHAMMAD HAIDAR ALI',
+  'ABDULLAH MUFID AD\'DIEWA',
+  'MUHAMAD NIZZAR RAMADHAN',
+  'GUSTI DIMAS ACHMAD',
+  'MUHAMMAD ARIEF SYAM',
+  'ILLIYIN AURO',
+  'ALIFFUDDIN ADILLA RAFIF',
+  'HUSAIN FADHILAH AMAL',
+  'MUHAMMAD FAIZZUDIN AMRULLOH',
+  'MUHAMMAD YUSUF ALI RAHMAN',
+  'ABID LUQMAN'
+];
 
 export function createEmptyState() {
   return {
-    version: 1,
+    version: 2,
     class: {
       name: '',
       startDate: '',
@@ -17,126 +38,51 @@ export function createEmptyState() {
 }
 
 export function createDemoState() {
-  const students = [
-    { id: 'student-1', name: 'Alice Prasetyo', active: true },
-    { id: 'student-2', name: 'Budi Santoso', active: true },
-    { id: 'student-3', name: 'Cindy Claudia', active: true },
-    { id: 'student-4', name: 'Dimas Ramadhan', active: true },
-    { id: 'student-5', name: 'Eka Putri', active: true },
-    { id: 'student-6', name: 'Fajar Hidayat', active: true },
-    { id: 'student-7', name: 'Gita Savitri', active: true },
-    { id: 'student-8', name: 'Hendra Wijaya', active: true },
-    { id: 'student-9', name: 'Indah Permata', active: true },
-    { id: 'student-10', name: 'Joko Anwar', active: true },
-    { id: 'student-11', name: 'Kevin Sanjaya', active: true },
-    { id: 'student-12', name: 'Lina Marlina', active: true }
+  const students = REAL_STUDENT_NAMES.map((name, idx) => ({
+    id: `student-${idx + 1}`,
+    name,
+    active: true
+  }));
+
+  // Sequential class dates starting 1 Oktober 2026 (skipping weekends Saturday=3, Sunday=4)
+  const scheduledDates = [
+    '2026-10-01', // Kamis - AHMAD YAZID
+    '2026-10-02', // Jumat - MUHAMMAD DEDY
+    '2026-10-05', // Senin - MUHAMMAD ZAKY KAMILURRIZAL
+    '2026-10-06', // Selasa - HANIF ABDURRAHMAN ARRIFAI
+    '2026-10-07', // Rabu - MUHAMAD FARIZ ASH SYUHADA
+    '2026-10-08', // Kamis - AHMAD MAULANA
+    '2026-10-09', // Jumat - REYNALDI ABDITIO
+    '2026-10-12', // Senin - MUHAMMAD HAIDAR ALI
+    '2026-10-13', // Selasa - ABDULLAH MUFID AD'DIEWA
+    '2026-10-14', // Rabu - MUHAMAD NIZZAR RAMADHAN
+    '2026-10-15', // Kamis - GUSTI DIMAS ACHMAD
+    '2026-10-16', // Jumat - MUHAMMAD ARIEF SYAM
+    '2026-10-19', // Senin - ILLIYIN AURO
+    '2026-10-20', // Selasa - ALIFFUDDIN ADILLA RAFIF
+    '2026-10-21', // Rabu - HUSAIN FADHILAH AMAL
+    '2026-10-22', // Kamis - MUHAMMAD FAIZZUDIN AMRULLOH
+    '2026-10-23', // Jumat - MUHAMMAD YUSUF ALI RAHMAN
+    '2026-10-26'  // Senin - ABID LUQMAN
   ];
 
-  // Schedule spanning past, today (2026-09-30), and upcoming class days
-  const schedule = [
-    {
-      id: 'schedule-1',
-      studentId: 'student-1',
-      date: '2026-09-28',
-      status: 'completed',
-      completedAt: '2026-09-28T10:15:00.000Z',
-      note: 'Topik: Arsitektur Microservices & Event Bus'
-    },
-    {
-      id: 'schedule-2',
-      studentId: 'student-2',
-      date: '2026-09-29',
-      status: 'completed',
-      completedAt: '2026-09-29T10:20:00.000Z',
-      note: 'Topik: Strategi Optimasi Index Database PostgreSQL'
-    },
-    {
-      id: 'schedule-3',
-      studentId: 'student-3',
-      date: '2026-09-30',
-      status: 'scheduled',
-      completedAt: null,
-      note: 'Topik: High-Throughput Message Queue dengan Apache Kafka'
-    },
-    {
-      id: 'schedule-4',
-      studentId: 'student-4',
-      date: '2026-10-01',
-      status: 'scheduled',
-      completedAt: null,
-      note: null
-    },
-    {
-      id: 'schedule-5',
-      studentId: 'student-5',
-      date: '2026-10-02',
-      status: 'scheduled',
-      completedAt: null,
-      note: null
-    },
-    {
-      id: 'schedule-6',
-      studentId: 'student-6',
-      date: '2026-10-05',
-      status: 'scheduled',
-      completedAt: null,
-      note: null
-    },
-    {
-      id: 'schedule-7',
-      studentId: 'student-7',
-      date: '2026-10-06',
-      status: 'scheduled',
-      completedAt: null,
-      note: null
-    },
-    {
-      id: 'schedule-8',
-      studentId: 'student-8',
-      date: '2026-10-07',
-      status: 'scheduled',
-      completedAt: null,
-      note: null
-    },
-    {
-      id: 'schedule-9',
-      studentId: 'student-9',
-      date: '2026-10-08',
-      status: 'scheduled',
-      completedAt: null,
-      note: null
-    },
-    {
-      id: 'schedule-10',
-      studentId: 'student-10',
-      date: '2026-10-09',
-      status: 'scheduled',
-      completedAt: null,
-      note: null
-    },
-    {
-      id: 'schedule-11',
-      studentId: 'student-11',
-      date: '2026-10-12',
-      status: 'scheduled',
-      completedAt: null,
-      note: null
-    },
-    {
-      id: 'schedule-12',
-      studentId: 'student-12',
-      date: '2026-10-13',
-      status: 'scheduled',
-      completedAt: null,
-      note: null
-    }
-  ];
+  const schedule = students.map((student, idx) => ({
+    id: `schedule-${idx + 1}`,
+    studentId: student.id,
+    date: scheduledDates[idx],
+    round: 1,
+    status: 'scheduled',
+    completedAt: null,
+    note: null,
+    isCarryOver: false,
+    carryOverFromRound: null
+  }));
 
   return {
-    version: 1,
+    version: 2,
     class: {
-      name: 'Backend Engineering Batch #4',
-      startDate: '2026-09-28',
+      name: 'Public Speaking Class',
+      startDate: '2026-10-01',
       classDays: [1, 2, 3, 4, 5], // Monday - Friday
       timezone: 'Asia/Jakarta'
     },

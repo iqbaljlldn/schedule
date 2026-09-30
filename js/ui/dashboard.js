@@ -29,7 +29,12 @@ export function renderDashboard(container) {
             HARI INI
           </span>
           <span class="today-hero-date">${formattedToday}</span>
-          <span class="badge badge-session">Sesi #${todayEntry.sessionNumber}</span>
+          <span class="badge badge-session">Putaran #${todayEntry.round || 1} • Sesi #${todayEntry.sessionNumber}</span>
+          ${
+            todayEntry.isCarryOver
+              ? `<span class="badge badge-warning badge-sm" title="Siswa ini belum maju di putaran sebelumnya">⚠️ Carry-over Putaran #${todayEntry.carryOverFromRound}</span>`
+              : ''
+          }
         </div>
 
         <div class="today-hero-center">
@@ -316,33 +321,64 @@ export function openPostponeDialog(entry) {
     document.body.appendChild(modal);
   }
 
+  const isLast = scheduleService.isLastInRound(entry.id);
+  const wasAlreadyPostponed = entry.status === 'postponed';
+  const isSecondPostponement = isLast || wasAlreadyPostponed;
+  const currentRound = entry.round || 1;
+  const nextRound = currentRound + 1;
+
   modal.innerHTML = `
     <div class="modal-card animate-pop">
       <div class="modal-header">
-        <h2 id="postpone-title" class="modal-title">⏱ Tunda Giliran: ${escapeHtml(entry.student.name)}</h2>
+        <h2 id="postpone-title" class="modal-title">
+          ${isSecondPostponement ? '⚠️ Penundaan Lanjutan:' : '⏱ Tunda Giliran:'} ${escapeHtml(entry.student.name)}
+        </h2>
         <button class="modal-close-btn" type="button" aria-label="Tutup dialog">×</button>
       </div>
       <form id="postpone-form" class="modal-body">
         <p class="modal-desc">
-          Siswa sedang sakit atau berhalangan? Pindahkan giliran mereka dan sistem akan otomatis memajukan antrean siswa berikutnya.
+          ${
+            isSecondPostponement
+              ? `Siswa ini sudah berada di posisi paling akhir atau sebelumnya pernah ditunda pada <strong>Putaran #${currentRound}</strong>. Agar jadwal kelas tidak tersandera, pilih opsi penanganan berikut:`
+              : 'Siswa sedang sakit atau berhalangan? Pindahkan giliran mereka dan sistem akan otomatis memajukan antrean siswa berikutnya.'
+          }
         </p>
 
         <div class="form-group">
-          <label for="postpone-target" class="form-label">Pindahkan Ke:</label>
+          <label for="postpone-target" class="form-label">Tindakan Lanjutan:</label>
           <select id="postpone-target" class="form-select" required>
-            <option value="end" selected>Paling Akhir Antrean (Rekomendasi)</option>
-            <option value="next">Tukar dengan Hari Berikutnya</option>
+            ${
+              isSecondPostponement
+                ? `
+                <option value="carry_over" selected>➡️ Bawa ke Putaran #${nextRound} (Prioritas Pembuka #1) — Rekomendasi</option>
+                <option value="skip">⊘ Tandai Dilewati (Gugur di Putaran #${currentRound})</option>
+                <option value="next">🗓 Tambah 1 Hari Perpanjangan (Tukar dengan Besok)</option>
+              `
+                : `
+                <option value="end" selected>Paling Akhir Putaran #${currentRound} (Rekomendasi)</option>
+                <option value="next">Tukar dengan Hari Berikutnya</option>
+                <option value="carry_over">Bawa Langsung ke Putaran #${nextRound}</option>
+              `
+            }
           </select>
         </div>
 
         <div class="form-group">
-          <label for="postpone-reason" class="form-label">Alasan / Catatan Penundaan:</label>
-          <input type="text" id="postpone-reason" class="form-input" placeholder="Contoh: Izin sakit demam" value="Izin / Sakit" />
+          <label for="postpone-reason" class="form-label">Alasan / Catatan:</label>
+          <input
+            type="text"
+            id="postpone-reason"
+            class="form-input"
+            placeholder="Contoh: Izin sakit demam"
+            value="${isSecondPostponement ? 'Belum bisa maju 2x' : 'Izin / Sakit'}"
+          />
         </div>
 
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary modal-cancel-btn">Batal</button>
-          <button type="submit" class="btn btn-warning">Tunda Sekarang</button>
+          <button type="submit" class="btn ${isSecondPostponement ? 'btn-danger' : 'btn-warning'}">
+            Konfirmasi Tindakan
+          </button>
         </div>
       </form>
     </div>
@@ -359,7 +395,14 @@ export function openPostponeDialog(entry) {
 
     scheduleService.postponeEntry(entry.id, { target, reason });
     closeModal(modal);
-    showToast(`Giliran ${entry.student.name} berhasil ditunda. Jadwal otomatis diperbarui!`, 'warning');
+
+    if (target === 'carry_over') {
+      showToast(`Giliran ${entry.student.name} dialihkan sebagai Pembuka Putaran #${nextRound}! 🚀`, 'warning', 4000);
+    } else if (target === 'skip') {
+      showToast(`Sesi ${entry.student.name} ditandai dilewati di Putaran #${currentRound}.`, 'info');
+    } else {
+      showToast(`Giliran ${entry.student.name} berhasil ditunda. Jadwal otomatis diperbarui!`, 'warning');
+    }
   });
 
   openModal(modal);

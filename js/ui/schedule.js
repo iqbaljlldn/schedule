@@ -56,6 +56,9 @@ export function renderSchedule(container) {
           <p class="section-desc">Urutan antrean bicara kelas. Pindahkan atau tukar giliran tanpa merusak riwayat.</p>
         </div>
         <div class="toolbar-actions">
+          <button class="btn btn-secondary" id="btn-start-next-round" type="button" title="Mulai putaran baru untuk seluruh kelas">
+            ✨ Mulai Putaran Baru (Round ${stats.totalRounds + 1})
+          </button>
           <button class="btn btn-secondary" id="btn-shuffle-upcoming" type="button" title="Acak urutan pembicara yang belum maju">
             🎲 Acak Urutan Mendatang
           </button>
@@ -173,7 +176,15 @@ function renderScheduleItem(item, today, index, totalItems) {
       </div>
 
       <div class="schedule-col-student">
-        <h3 class="schedule-student-name">${escapeHtml(item.student.name)}</h3>
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:2px;">
+          <h3 class="schedule-student-name">${escapeHtml(item.student.name)}</h3>
+          <span class="badge badge-neutral badge-sm">Putaran #${item.round || 1}</span>
+          ${
+            item.isCarryOver
+              ? `<span class="badge badge-warning badge-sm" title="Tunggakan dari Putaran #${item.carryOverFromRound}">⚠️ Carry-over Putaran #${item.carryOverFromRound}</span>`
+              : ''
+          }
+        </div>
         ${
           item.note
             ? `<div class="schedule-note-badge" title="${escapeHtml(item.note)}">
@@ -426,6 +437,25 @@ function attachScheduleEvents(container) {
     if (confirmed) {
       scheduleService.shuffleUpcoming();
       showToast('Urutan giliran mendatang berhasil diacak! 🎲', 'success');
+    }
+  });
+
+  // Start Next Round
+  container.querySelector('#btn-start-next-round')?.addEventListener('click', async () => {
+    const stats = scheduleService.getStatistics();
+    const nextRoundNum = stats.totalRounds + 1;
+
+    const confirmed = await showConfirmDialog({
+      title: `Mulai Putaran #${nextRoundNum}?`,
+      message: `Sistem akan otomatis menjadwalkan seluruh ${stats.totalStudents} siswa aktif untuk Putaran #${nextRoundNum} melanjutkan jadwal yang ada. Siap memulai putaran baru?`,
+      confirmText: `Ya, Buat Putaran #${nextRoundNum}`,
+      cancelText: 'Batal',
+      isDestructive: false
+    });
+
+    if (confirmed) {
+      scheduleService.startNextRound();
+      showToast(`Putaran #${nextRoundNum} berhasil dibuat untuk seluruh kelas! 🎉`, 'success', 3500);
     }
   });
 

@@ -5,7 +5,7 @@
 import { validateScheduleData } from '../utils/validation.js';
 import { getTodayDateString } from '../utils/date.js';
 
-export const STORAGE_KEY = 'public-speaking-schedule:v1';
+export const STORAGE_KEY = 'public-speaking-schedule:v2';
 
 export class LocalStorageRepository {
   constructor(storageKey = STORAGE_KEY) {

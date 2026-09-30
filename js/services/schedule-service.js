@@ -1,6 +1,6 @@
 /**
  * Schedule Service containing all business rules, queue manipulation,
- * date recalculation, and student management.
+ * multi-round cycling, carry-over debt handling, and date recalculation.
  */
 import { store } from '../core/store.js';
 import { generateId } from '../utils/id.js';
@@ -21,7 +21,13 @@ export class ScheduleService {
    */
   getStudent(studentId) {
     const state = store.getState();
-    return state.students.find(s => s.id === studentId) || { id: studentId, name: 'Siswa Tidak Dikenal', active: false };
+    return (
+      state.students.find(s => s.id === studentId) || {
+        id: studentId,
+        name: 'Siswa Tidak Dikenal',
+        active: false
+      }
+    );
   }
 
   /**
@@ -47,7 +53,6 @@ export class ScheduleService {
     if (!state || !state.schedule) return null;
     const today = this.getTodayDate();
 
-    // Look for an entry on today's date
     const entry = state.schedule.find(s => s.date === today);
     if (!entry) return null;
 
@@ -56,6 +61,9 @@ export class ScheduleService {
 
     return {
       ...entry,
+      round: entry.round || 1,
+      isCarryOver: Boolean(entry.isCarryOver),
+      carryOverFromRound: entry.carryOverFromRound || null,
       student,
       sessionNumber,
       relativeDate: getRelativeDateInfo(entry.date, today)
@@ -66,7 +74,6 @@ export class ScheduleService {
    * Computes 1-based sequential session number across the schedule.
    */
   getSessionNumber(scheduleId) {
-    const state = store.getState();
     const sorted = this.getSortedSchedule();
     const index = sorted.findIndex(s => s.id === scheduleId);
     return index >= 0 ? index + 1 : 1;
@@ -84,6 +91,9 @@ export class ScheduleService {
       .sort((a, b) => a.date.localeCompare(b.date))
       .map((entry, idx) => ({
         ...entry,
+        round: entry.round || 1,
+        isCarryOver: Boolean(entry.isCarryOver),
+        carryOverFromRound: entry.carryOverFromRound || null,
         student: this.getStudent(entry.studentId),
         sessionNumber: idx + 1,
         relativeDate: getRelativeDateInfo(entry.date, today)
@@ -97,7 +107,6 @@ export class ScheduleService {
     const today = this.getTodayDate();
     const sorted = this.getSortedSchedule();
 
-    // Upcoming entries are those with date > today, or today's entry if scheduled and not completed
     const upcoming = sorted.filter(entry => {
       if (entry.date > today) return true;
       return false;
@@ -119,13 +128,51 @@ export class ScheduleService {
       return false;
     });
 
-    // Most recent past entries first
     past.sort((a, b) => b.date.localeCompare(a.date));
     return limit ? past.slice(0, limit) : past;
   }
 
   /**
+   * Returns the current active round (round of first upcoming/today active entry).
+   */
+  getCurrentRound() {
+    const todayEntry = this.getTodayEntry();
+    if (todayEntry) return todayEntry.round;
+
+    const upcoming = this.getUpcomingEntries(1);
+    if (upcoming.length > 0) return upcoming[0].round;
+
+    const all = this.getSortedSchedule();
+    if (all.length === 0) return 1;
+    return all[all.length - 1].round || 1;
+  }
+
+  /**
+   * Returns the maximum round currently generated.
+   */
+  getTotalRounds() {
+    const state = store.getState();
+    if (!state?.schedule?.length) return 1;
+    return state.schedule.reduce((max, s) => Math.max(max, s.round || 1), 1);
+  }
+
+  /**
+   * Checks if an entry is at the very end of its round or already postponed.
+   */
+  isLastInRound(scheduleId) {
+    const sorted = this.getSortedSchedule();
+    const item = sorted.find(s => s.id === scheduleId);
+    if (!item) return false;
+
+    const roundItems = sorted.filter(s => s.round === item.round && s.status !== 'completed');
+    if (roundItems.length === 0) return false;
+
+    return roundItems[roundItems.length - 1].id === scheduleId;
+  }
+
+  /**
    * Marks a schedule entry as completed.
+   * If this was the last entry of the round, can trigger or prepare next round.
    */
   completeEntry(scheduleId) {
     store.setState(state => {
@@ -187,7 +234,6 @@ export class ScheduleService {
 
     if (idx1 === -1 || idx2 === -1 || idx1 === idx2) return false;
 
-    // Swap student IDs or reorder entries
     const newSchedule = [...state.schedule];
     const tempStudentId = newSchedule[idx1].studentId;
     const tempNote = newSchedule[idx1].note;
@@ -210,19 +256,16 @@ export class ScheduleService {
 
   /**
    * Moves an active entry UP or DOWN in queue order, recalculating dates.
-   * Locked historical entries are not affected.
    */
   moveEntry(scheduleId, direction) {
     const state = store.getState();
     const today = this.getTodayDate();
 
-    // Sort schedule
     const sorted = [...state.schedule].sort((a, b) => a.date.localeCompare(b.date));
     const targetIdx = sorted.findIndex(s => s.id === scheduleId);
     if (targetIdx === -1) return false;
 
     const item = sorted[targetIdx];
-    // Do not allow reordering completed or past entries
     if (item.status === 'completed' || item.date < today) {
       throw new Error('Jadwal yang sudah selesai atau telah berlalu tidak dapat digeser.');
     }
@@ -235,25 +278,21 @@ export class ScheduleService {
       throw new Error('Tidak dapat menggeser mendahului jadwal yang sudah selesai atau lewat.');
     }
 
-    // Swap in array
     sorted[targetIdx] = neighbor;
     sorted[neighborIdx] = item;
 
-    // Recalculate upcoming dates on the reordered array
     const updatedSchedule = this.recalculateDatesArray(sorted, state.class.classDays, today);
     store.setState({ ...state, schedule: updatedSchedule });
     return true;
   }
 
   /**
-   * Postpones a student's session (e.g. sick/absent).
-   * Moves the student to the end of the upcoming queue (or tomorrow),
-   * shifts the remaining schedule forward, and recalculates dates.
-   *
-   * @param {string} scheduleId
-   * @param {Object} options
-   * @param {'end'|'next'} [options.target='end']
-   * @param {string} [options.reason='']
+   * Postpones a student's session.
+   * Supports:
+   * - 'end': move to end of current round
+   * - 'next': move to tomorrow/next slot
+   * - 'carry_over': carry-over to next round as Priority #1
+   * - 'skip': mark as skipped in this round
    */
   postponeEntry(scheduleId, { target = 'end', reason = 'Izin / Sakit' } = {}) {
     const state = store.getState();
@@ -263,8 +302,68 @@ export class ScheduleService {
     const idx = sorted.findIndex(s => s.id === scheduleId);
     if (idx === -1) return false;
 
+    const currentItem = sorted[idx];
+    const currentRound = currentItem.round || 1;
+    const dateFormatted = formatShortDate(currentItem.date);
+
+    // Case 1: Carry-Over to Next Round
+    if (target === 'carry_over') {
+      // Mark current item as postponed/carried over
+      sorted[idx] = {
+        ...currentItem,
+        status: 'postponed',
+        note: currentItem.note
+          ? `${currentItem.note} | Ditunda ke Putaran Berikutnya (${reason})`
+          : `Ditunda ke Putaran Berikutnya (${reason})`
+      };
+
+      // Ensure next round exists with this student as #1
+      const nextRound = currentRound + 1;
+      const nextRoundExists = sorted.some(s => (s.round || 1) === nextRound);
+
+      let finalSchedule;
+      if (!nextRoundExists) {
+        finalSchedule = this.buildNextRoundSchedule(sorted, {
+          carryOverStudentIds: [currentItem.studentId]
+        });
+      } else {
+        // If next round already exists, insert as first in next round
+        const firstNextRoundIdx = sorted.findIndex(s => (s.round || 1) === nextRound);
+        const newEntry = {
+          id: generateId('schedule'),
+          studentId: currentItem.studentId,
+          date: today, // will be recalculated
+          round: nextRound,
+          status: 'scheduled',
+          completedAt: null,
+          note: `Prioritas Pembuka Putaran #${nextRound} (Tunggakan Putaran #${currentRound})`,
+          isCarryOver: true,
+          carryOverFromRound: currentRound
+        };
+        sorted.splice(firstNextRoundIdx >= 0 ? firstNextRoundIdx : sorted.length, 0, newEntry);
+        finalSchedule = this.recalculateDatesArray(sorted, state.class.classDays, today);
+      }
+
+      store.setState({ ...state, schedule: finalSchedule });
+      return true;
+    }
+
+    // Case 2: Skip in this round
+    if (target === 'skip') {
+      sorted[idx] = {
+        ...currentItem,
+        status: 'skipped',
+        note: currentItem.note
+          ? `${currentItem.note} | Dilewati di Putaran #${currentRound} (${reason})`
+          : `Dilewati di Putaran #${currentRound} (${reason})`
+      };
+      const updatedSchedule = this.recalculateDatesArray(sorted, state.class.classDays, today);
+      store.setState({ ...state, schedule: updatedSchedule });
+      return true;
+    }
+
+    // Case 3: Move to end or next slot in queue
     const [postponedItem] = sorted.splice(idx, 1);
-    const dateFormatted = formatShortDate(postponedItem.date);
     const noteText = reason
       ? `Ditunda dari ${dateFormatted} (${reason})`
       : `Ditunda dari ${dateFormatted}`;
@@ -276,12 +375,18 @@ export class ScheduleService {
     };
 
     if (target === 'next') {
-      // Insert right after the next active slot
       const insertIdx = Math.min(idx + 1, sorted.length);
       sorted.splice(insertIdx, 0, updatedItem);
     } else {
-      // Append to end of schedule
-      sorted.push(updatedItem);
+      // Find the end of the current round
+      let insertIdx = sorted.length;
+      for (let i = sorted.length - 1; i >= 0; i--) {
+        if ((sorted[i].round || 1) === currentRound) {
+          insertIdx = i + 1;
+          break;
+        }
+      }
+      sorted.splice(insertIdx, 0, updatedItem);
     }
 
     const updatedSchedule = this.recalculateDatesArray(sorted, state.class.classDays, today);
@@ -290,29 +395,76 @@ export class ScheduleService {
   }
 
   /**
-   * Marks a student as skipped for the day.
-   * Advances the queue so the next student speaks, keeping the skipped record.
+   * Starts a brand new round (Round 2, 3, etc.) for all active students.
+   * If carryOverStudentIds is provided, those students are placed at position #1.
    */
-  skipEntry(scheduleId, reason = 'Dilewati') {
+  startNextRound({ shuffle = false, carryOverStudentIds = [] } = {}) {
+    const state = store.getState();
+    const updatedSchedule = this.buildNextRoundSchedule(state.schedule, {
+      shuffle,
+      carryOverStudentIds
+    });
+    store.setState({ ...state, schedule: updatedSchedule });
+    return this.getTotalRounds();
+  }
+
+  /**
+   * Internal generator for next round entries.
+   */
+  buildNextRoundSchedule(currentSchedule, { shuffle = false, carryOverStudentIds = [] } = {}) {
     const state = store.getState();
     const today = this.getTodayDate();
-    const sorted = [...state.schedule].sort((a, b) => a.date.localeCompare(b.date));
+    const sorted = [...currentSchedule].sort((a, b) => a.date.localeCompare(b.date));
 
-    const idx = sorted.findIndex(s => s.id === scheduleId);
-    if (idx === -1) return false;
+    const currentMaxRound = sorted.reduce((max, s) => Math.max(max, s.round || 1), 1);
+    const nextRound = currentMaxRound + 1;
 
-    // Mark as skipped and lock its date to current
-    sorted[idx] = {
-      ...sorted[idx],
-      status: 'skipped',
-      note: sorted[idx].note ? `${sorted[idx].note} | ${reason}` : reason
-    };
+    // Determine start date of next round
+    const lastDate = sorted.length > 0 ? sorted[sorted.length - 1].date : today;
+    let nextDate = getNextClassDate(lastDate, state.class.classDays);
 
-    // The rest of the pending items after this one get recalculated starting from today
-    // if today has no other active speaker!
-    const updatedSchedule = this.recalculateDatesArray(sorted, state.class.classDays, today);
-    store.setState({ ...state, schedule: updatedSchedule });
-    return true;
+    const activeStudents = state.students.filter(s => s.active);
+    let regularStudentIds = activeStudents
+      .map(s => s.id)
+      .filter(id => !carryOverStudentIds.includes(id));
+
+    if (shuffle) {
+      for (let i = regularStudentIds.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [regularStudentIds[i], regularStudentIds[j]] = [regularStudentIds[j], regularStudentIds[i]];
+      }
+    }
+
+    const orderedStudentIds = [...carryOverStudentIds, ...regularStudentIds];
+
+    const newRoundEntries = orderedStudentIds.map(studentId => {
+      const isCarryOver = carryOverStudentIds.includes(studentId);
+      const assignedDate = nextDate;
+      nextDate = getNextClassDate(nextDate, state.class.classDays);
+
+      return {
+        id: generateId('schedule'),
+        studentId,
+        date: assignedDate,
+        round: nextRound,
+        status: 'scheduled',
+        completedAt: null,
+        note: isCarryOver
+          ? `Prioritas Pembuka Putaran #${nextRound} (Tunggakan Putaran #${currentMaxRound})`
+          : null,
+        isCarryOver,
+        carryOverFromRound: isCarryOver ? currentMaxRound : null
+      };
+    });
+
+    return [...sorted, ...newRoundEntries];
+  }
+
+  /**
+   * Marks a student as skipped for the day.
+   */
+  skipEntry(scheduleId, reason = 'Dilewati') {
+    return this.postponeEntry(scheduleId, { target: 'skip', reason });
   }
 
   /**
@@ -331,12 +483,14 @@ export class ScheduleService {
    * Historical / completed entries are preserved as-is.
    * Active entries are assigned sequential class days.
    */
-  recalculateDatesArray(scheduleItems, classDays = [1, 2, 3, 4, 5], today = this.getTodayDate()) {
-    // Separate into historical/completed and active
+  recalculateDatesArray(
+    scheduleItems,
+    classDays = [1, 2, 3, 4, 5],
+    today = this.getTodayDate()
+  ) {
     const historical = [];
     const active = [];
 
-    // Check if there is already a completed or skipped session on today
     let todayHasFinishedSession = false;
 
     for (const item of scheduleItems) {
@@ -346,14 +500,12 @@ export class ScheduleService {
           todayHasFinishedSession = true;
         }
       } else if (item.date < today) {
-        // Uncompleted item in past - treat as active to be rescheduled starting today
         active.push(item);
       } else {
         active.push(item);
       }
     }
 
-    // Determine starting date for active queue
     let nextDate;
     if (!todayHasFinishedSession && isClassDay(today, classDays)) {
       nextDate = today;
@@ -361,7 +513,6 @@ export class ScheduleService {
       nextDate = getNextClassDate(today, classDays);
     }
 
-    // Assign sequential class dates to active items
     const recalculatedActive = active.map(item => {
       const assignedDate = nextDate;
       nextDate = getNextClassDate(nextDate, classDays);
@@ -371,16 +522,18 @@ export class ScheduleService {
       };
     });
 
-    return [...historical, ...recalculatedActive].sort((a, b) => a.date.localeCompare(b.date));
+    return [...historical, ...recalculatedActive].sort((a, b) =>
+      a.date.localeCompare(b.date)
+    );
   }
 
   /**
    * Adds a new student to the class.
-   * Optionally appends them to the upcoming schedule automatically.
    */
   addStudent({ name }, addToSchedule = true) {
     if (!name || !name.trim()) throw new Error('Nama siswa tidak boleh kosong.');
     const state = store.getState();
+    const currentRound = this.getCurrentRound();
     const newStudent = {
       id: generateId('student'),
       name: name.trim(),
@@ -394,10 +547,13 @@ export class ScheduleService {
       const newEntry = {
         id: generateId('schedule'),
         studentId: newStudent.id,
-        date: today, // will be recalculated to next valid slot
+        date: today,
+        round: currentRound,
         status: 'scheduled',
         completedAt: null,
-        note: null
+        note: null,
+        isCarryOver: false,
+        carryOverFromRound: null
       };
       newSchedule.push(newEntry);
       newSchedule = this.recalculateDatesArray(newSchedule, state.class.classDays, today);
@@ -432,8 +588,7 @@ export class ScheduleService {
   }
 
   /**
-   * Archives a student: marks them inactive and removes only FUTURE uncompleted sessions.
-   * Preserves historical completed sessions.
+   * Archives a student: marks them inactive and removes future uncompleted sessions.
    */
   archiveStudent(studentId) {
     const state = store.getState();
@@ -441,10 +596,8 @@ export class ScheduleService {
 
     const students = state.students.map(s => (s.id === studentId ? { ...s, active: false } : s));
 
-    // Remove only future/uncompleted schedule entries for this student
     const schedule = state.schedule.filter(item => {
       if (item.studentId === studentId) {
-        // Keep completed items
         return item.status === 'completed';
       }
       return true;
@@ -466,7 +619,6 @@ export class ScheduleService {
     const state = store.getState();
     const today = this.getTodayDate();
 
-    // Check if student has completed sessions
     const hasCompleted = state.schedule.some(
       s => s.studentId === studentId && s.status === 'completed'
     );
@@ -494,14 +646,17 @@ export class ScheduleService {
     const firstDate = getFirstClassDateOnOrAfter(startDate, classDays);
     let currDate = firstDate;
 
-    const newSchedule = studentList.map((student, idx) => {
+    const newSchedule = studentList.map(student => {
       const entry = {
         id: generateId('schedule'),
         studentId: student.id,
         date: currDate,
+        round: 1,
         status: 'scheduled',
         completedAt: null,
-        note: null
+        note: null,
+        isCarryOver: false,
+        carryOverFromRound: null
       };
       currDate = getNextClassDate(currDate, classDays);
       return entry;
@@ -522,7 +677,6 @@ export class ScheduleService {
       ...classInfo
     };
 
-    // Recalculate schedule with new class days
     const recalculatedSchedule = this.recalculateDatesArray(
       state.schedule,
       updatedClass.classDays,
@@ -538,7 +692,6 @@ export class ScheduleService {
 
   /**
    * Randomizes / shuffles upcoming uncompleted schedule order.
-   * Useful for fair drawing in classrooms.
    */
   shuffleUpcoming() {
     const state = store.getState();
@@ -556,7 +709,6 @@ export class ScheduleService {
       }
     }
 
-    // Fisher-Yates shuffle on upcoming
     for (let i = upcoming.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [upcoming[i], upcoming[j]] = [upcoming[j], upcoming[i]];
@@ -568,7 +720,7 @@ export class ScheduleService {
   }
 
   /**
-   * Returns summary statistics for class dashboard.
+   * Returns summary statistics including round info and debt tracking.
    */
   getStatistics() {
     const state = store.getState();
@@ -576,12 +728,27 @@ export class ScheduleService {
     const completedCount = state.schedule.filter(s => s.status === 'completed').length;
     const scheduledCount = state.schedule.filter(s => s.status === 'scheduled').length;
     const postponedCount = state.schedule.filter(s => s.status === 'postponed').length;
+    const currentRound = this.getCurrentRound();
+    const totalRounds = this.getTotalRounds();
+
+    // Students with carry over debts
+    const debts = state.schedule
+      .filter(s => s.isCarryOver)
+      .map(s => ({
+        studentId: s.studentId,
+        studentName: this.getStudent(s.studentId).name,
+        carryOverFromRound: s.carryOverFromRound,
+        currentRound: s.round
+      }));
 
     return {
       totalStudents,
       completedCount,
       scheduledCount,
       postponedCount,
+      currentRound,
+      totalRounds,
+      debts,
       totalSessions: state.schedule.length
     };
   }

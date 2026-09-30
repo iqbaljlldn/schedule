@@ -24,12 +24,16 @@ export function renderStudents(container) {
       .filter(s => s.status === 'completed')
       .sort((a, b) => b.date.localeCompare(a.date))[0];
 
+    const debtItem = studentSessions.find(s => s.isCarryOver);
+    const debtRound = debtItem ? debtItem.carryOverFromRound : null;
+
     return {
       ...student,
       completedCount,
       totalSessions: studentSessions.length,
       nextSession,
-      lastSession
+      lastSession,
+      debtRound
     };
   });
 
@@ -132,11 +136,21 @@ function renderStudentCard(student) {
           <span class="stat-val">
             ${
               student.nextSession
-                ? `<strong>${formatShortDate(student.nextSession.date, true)}</strong> (Sesi #${student.nextSession.sessionNumber})`
+                ? `<strong>${formatShortDate(student.nextSession.date, true)}</strong> (Putaran #${student.nextSession.round || 1})`
                 : '<span class="text-muted">Belum dijadwalkan</span>'
             }
           </span>
         </div>
+        ${
+          student.debtRound
+            ? `
+            <div class="student-stat-row" style="background: rgba(245, 158, 11, 0.1); padding: 4px 6px; border-radius: 4px; margin-top: 4px;">
+              <span class="stat-label text-warning font-bold">Status:</span>
+              <span class="stat-val text-warning font-bold">⚠️ Carry-over Putaran #${student.debtRound}</span>
+            </div>
+          `
+            : ''
+        }
       </div>
 
       <div class="student-card-footer">
