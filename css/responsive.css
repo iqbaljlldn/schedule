@@ -1,0 +1,153 @@
+/**
+ * Responsive Styles & Breakpoints.
+ * Ensures seamless experience on mobile, tablet, and desktop.
+ */
+
+@media (max-width: 860px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-container {
+    padding: 0 var(--space-3);
+  }
+
+  .header-inner {
+    height: 60px;
+  }
+
+  .brand-title {
+    font-size: var(--text-base);
+  }
+
+  .header-class-badge {
+    display: none; /* Hide on small mobile to conserve space */
+  }
+
+  .today-hero {
+    padding: var(--space-6) var(--space-4);
+    border-radius: var(--radius-lg);
+  }
+
+  .today-speaker-name {
+    font-size: 1.875rem;
+    line-height: 1.2;
+  }
+
+  .today-actions-bar {
+    flex-direction: column;
+    width: 100%;
+    gap: var(--space-2);
+  }
+
+  .today-actions-bar .btn-hero {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .schedule-controls-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .filter-tabs {
+    overflow-x: auto;
+    width: 100%;
+    padding-bottom: 4px;
+  }
+
+  .search-box {
+    width: 100%;
+  }
+
+  /* Schedule Item Cards on Mobile */
+  .schedule-item-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    position: relative;
+  }
+
+  .schedule-col-reorder {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    justify-content: space-between;
+    border-bottom: 1px dashed var(--border-light);
+    padding-bottom: var(--space-2);
+  }
+
+  .btn-reorder {
+    width: 38px;
+    height: 32px;
+    font-size: 0.8rem;
+  }
+
+  .schedule-col-date {
+    min-width: unset;
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .schedule-col-student {
+    width: 100%;
+  }
+
+  .schedule-student-name {
+    font-size: var(--text-base);
+  }
+
+  .schedule-col-status {
+    width: 100%;
+  }
+
+  .schedule-col-actions {
+    width: 100%;
+    justify-content: flex-end;
+    border-top: 1px solid var(--border-light);
+    padding-top: var(--space-2);
+  }
+
+  .action-buttons-group {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .action-buttons-group .btn-subtle {
+    min-height: 38px;
+    padding: 6px 10px;
+  }
+
+  .modal-card {
+    max-height: 95vh;
+    border-radius: var(--radius-lg);
+  }
+
+  .modal-body {
+    padding: var(--space-4);
+  }
+
+  .modal-header, .modal-footer {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .toast-container {
+    left: var(--space-4);
+    right: var(--space-4);
+    bottom: var(--space-4);
+    max-width: unset;
+  }
+}
